@@ -14,6 +14,11 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
 builder.Services.AddTransient<IMarketForecaster, MarketForecaster>();
+//services.AddSingleton<IMarketForecaster>(new MarketForecasterV2());
+//services.AddTransient<MarketForecasterV2>();
+//services.AddSingleton(new MarketForecasterV2());
+//services.AddTransient(typeof(MarketForecasterV2));
+//services.AddTransient(typeof(IMarketForecaster), typeof(MarketForecasterV2));
 
 builder.Services.AddAppSettingsConfig(builder.Configuration);
 
