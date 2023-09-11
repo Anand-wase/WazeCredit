@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using WazeCredit.Data;
 using WazeCredit.Middleware;
 using WazeCredit.Service;
@@ -13,12 +14,14 @@ var builder = WebApplication.CreateBuilder(args);
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString));
-builder.Services.AddTransient<IMarketForecaster, MarketForecaster>();
+builder.Services.AddTransient<IMarketForecaster, MarketForecasterV2>();
 //services.AddSingleton<IMarketForecaster>(new MarketForecasterV2());
 //services.AddTransient<MarketForecasterV2>();
 //services.AddSingleton(new MarketForecasterV2());
 //services.AddTransient(typeof(MarketForecasterV2));
 //services.AddTransient(typeof(IMarketForecaster), typeof(MarketForecasterV2));
+
+builder.Services.TryAddTransient<IMarketForecaster, MarketForecaster>();
 
 builder.Services.AddAppSettingsConfig(builder.Configuration);
 
