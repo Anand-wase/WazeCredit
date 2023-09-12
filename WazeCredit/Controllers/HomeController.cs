@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using System.Diagnostics;
+using WazeCredit.Data;
 using WazeCredit.Models;
 using WazeCredit.Models.ViewModels;
 using WazeCredit.Service;
@@ -16,13 +17,18 @@ namespace WazeCredit.Controllers
         private readonly SendGridSettings _sendGridOptions;
         private readonly TwilioSettings _twilioOptions;
         private readonly WazeForecastSettings _wazeOptions;
+        private readonly ICreditValidator _creditValidator;
+        private readonly ApplicationDbContext _db;
 
-
+        [BindProperty]
+        public CreditApplication CreditModel { get; set; }
         public HomeController(IMarketForecaster marketForecaster,
             IOptions<StripeSettings> stripeOptions,
             IOptions<SendGridSettings> sendGridOptions,
             IOptions<TwilioSettings> twilioOptions,
-            IOptions<WazeForecastSettings> wazeOptions
+            IOptions<WazeForecastSettings> wazeOptions,
+            ICreditValidator creditValidator,
+            ApplicationDbContext db
             )
         {
             homeVM = new HomeVM();
@@ -31,6 +37,8 @@ namespace WazeCredit.Controllers
             _sendGridOptions = sendGridOptions.Value;
             _twilioOptions = twilioOptions.Value;
             _wazeOptions = wazeOptions.Value;
+            _creditValidator = creditValidator;
+            _db = db;
         }
 
         public IActionResult Index()
@@ -65,6 +73,54 @@ namespace WazeCredit.Controllers
             messages.Add($"Twilio SID: " + _twilioOptions.AccountSid);
             messages.Add($"Twilio Token: " + _twilioOptions.AuthToken);
             return View(messages);
+        }
+        public IActionResult CreditApplication()
+        {
+            CreditModel = new CreditApplication();
+            return View(CreditModel);
+        }
+        [ValidateAntiForgeryToken]
+        [HttpPost]
+        [ActionName("CreditApplication")]
+        public async Task<IActionResult> CreditApplicationPOST([FromServices] Func<CreditApprovedEnum, ICreditApproved> _creditService)
+        {
+            if (ModelState.IsValid)
+            {
+                var (validationPassed, errorMessages) = await _creditValidator.PassAllValidations(CreditModel);
+
+                CreditResult creditResult = new CreditResult()
+                {
+                    ErrorList = errorMessages,
+                    CreditID = 0,
+                    Success = validationPassed
+                };
+                if (validationPassed)
+                {
+                    CreditModel.CreditApproved = _creditService(
+                        CreditModel.Salary > 50000 ?
+                        CreditApprovedEnum.High : CreditApprovedEnum.Low)
+                        .GetCreditApproved(CreditModel);
+
+                    //add record to database
+
+                    _db.CreditApplicationModel.Add(CreditModel);
+                    _db.SaveChanges();
+                    creditResult.CreditID = CreditModel.Id;
+                    creditResult.CreditApproved = CreditModel.CreditApproved;
+                    return RedirectToAction(nameof(CreditResult), creditResult);
+                }
+                else
+                {
+                    return RedirectToAction(nameof(CreditResult), creditResult);
+                }
+
+            }
+            return View(CreditModel);
+        }
+        public IActionResult CreditResult(CreditResult creditResult)
+        {
+
+            return View(creditResult);
         }
         public IActionResult Privacy()
         {

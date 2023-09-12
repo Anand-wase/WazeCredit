@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using WazeCredit.Data;
 using WazeCredit.Middleware;
+using WazeCredit.Models;
 using WazeCredit.Service;
 using WazeCredit.Service.LifeTimeExample;
 using WazeCredit.Utility.AppSettingsClasses;
@@ -33,6 +34,31 @@ builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.Requ
 builder.Services.AddTransient<TransientService>();
 builder.Services.AddScoped<ScopedService>();
 builder.Services.AddSingleton<SingletonService>();
+
+builder.Services.AddScoped<CreditApprovedHigh>();
+builder.Services.AddScoped<CreditApprovedLow>();
+
+builder.Services.AddScoped<Func<CreditApprovedEnum, ICreditApproved>>(ServiceProvider => range =>
+{
+    switch (range)
+    {
+        case CreditApprovedEnum.High: return ServiceProvider.GetService<CreditApprovedHigh>();
+        case CreditApprovedEnum.Low: return ServiceProvider.GetService<CreditApprovedLow>();
+        default: return ServiceProvider.GetService<CreditApprovedLow>();
+    }
+});
+
+//services.AddScoped<IValidationChecker, AddressValidationChecker>();
+//services.AddScoped<IValidationChecker, CreditValidationChecker>();
+//services.TryAddEnumerable(ServiceDescriptor.Scoped<IValidationChecker, AddressValidationChecker>());
+//services.TryAddEnumerable(ServiceDescriptor.Scoped<IValidationChecker, CreditValidationChecker>());
+
+builder.Services.TryAddEnumerable(new[] {
+            ServiceDescriptor.Scoped<IValidationChecker, AddressValidationChecker>(),
+            ServiceDescriptor.Scoped<IValidationChecker, CreditValidationChecker>()
+            });
+
+builder.Services.AddScoped<ICreditValidator, CreditValidator>();
 
 builder.Services.AddControllersWithViews().AddRazorRuntimeCompilation();
 
